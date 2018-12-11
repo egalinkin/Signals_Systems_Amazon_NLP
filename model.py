@@ -2,9 +2,8 @@ import sys
 import numpy as np
 import json
 from keras.preprocessing.text import Tokenizer
-from keras.layers import Embedding, Flatten, Dense, LSTM, Dropout, Activation
+from keras.layers import Embedding, Dense, LSTM, Dropout
 from keras.models import Sequential
-from keras.utils import to_categorical
 from keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
 from keras.optimizers import Adam
@@ -108,7 +107,7 @@ if __name__ == "__main__":
     model = build_model(embeddings)
     print("Running!")
     model.compile(loss='sparse_categorical_crossentropy',
-                  optimizer=Adam(lr=0.001),
+                  optimizer=Adam(lr=0.005),
                   metrics=['accuracy'])
-    history = model.fit(X_train, y_train, batch_size=128, epochs=25, validation_data=(X_test, y_test))
+    history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_test, y_test))
     plot_history(history)
