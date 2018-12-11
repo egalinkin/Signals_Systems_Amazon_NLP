@@ -13,11 +13,9 @@ Neural networks come in many forms, from a more simple perceptron (that is, a si
 
 A Long Short-Term Memory is particularly interesting from the perspective of feedback systems. Essentially, they are a standard neuron within a neural net, but also contain "gates" which allow the neural net to maintain some level of context around sequence data. As mentioned, these relate to Kalman filters, but have a more general and nonlinear view. 
 
-<sub>Credit to Jitong Chen and DeLiang Wang for the diagram.</sub>
-![lstm block diagram](https://i.imgur.com/2AXRN9e.png)
+![lstm block diagram](https://i.imgur.com/2AXRN9e.png)<sub>Credit to Jitong Chen and DeLiang Wang for the diagram.</sub>
 
-<sub>Credit to Jitong Chen and DeLiang Wang for the diagram.</sub>
-![Equations](https://i.imgur.com/tN1YNbm.png)
+![Equations](https://i.imgur.com/tN1YNbm.png)<sub>Credit to wikimedia for the diagram.</sub>
 
 The key feature of LSTMs is the cell state, which provides "memory" from neuron to neuron at different layers in the network. A series of gates will determine what to "remember" between neurons. The forget gate (f<sub>t</sub>) uses a [Sigmoid function](http://mathworld.wolfram.com/SigmoidFunction.html) to provide a decision, from a "definitely forget this" of 0 to "definitely remember this" of 1. Next, we make a decision about whether or not any new candidate data should be added to the cell. Another sigmoid, the input gate i<sub>t</sub> indicates which values to update, and a tanh layer provides candidate values C_tilde<sub>t</sub>. The cell valued C<sub>t</sub> are based on the effect of the forget gate on the previous cell values plus the input gate's effect on the candidate values. This provides an input to another gate, the output gate, which is another sigmoid that uses a hidden state vector from t-1 and the current input on the weights and biases of the neuron. This output gate value is then multiplied by a tanh nonlinearity on the cell state C<sub>t</sub> to provide the hidden state vector for the next cell.
 
