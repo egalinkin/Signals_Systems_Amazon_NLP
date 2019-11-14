@@ -8,6 +8,7 @@ from keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
 from keras.optimizers import Adam
 import matplotlib.pyplot as plt
+from tqdm import tqdm
 
 
 # With credit to keras.io team for the tokenization parts of this code.
@@ -25,7 +26,7 @@ def load_data(datapath, glovepath, sample_size=25000):
                 labels.append(int(line["overall"]) - 1)  # Want to convert values to int, since we're categorizing.
                 texts.append(line["reviewText"])
         else:
-            for line in f:
+            for line in tqdm(f):
                 line = json.loads(line)
                 labels.append(int(line["overall"]) - 1)  # Want to convert values to int, since we're categorizing.
                 texts.append(line["reviewText"])
@@ -51,7 +52,8 @@ def load_data(datapath, glovepath, sample_size=25000):
     data = data[indices]
     labels = labels[indices]  # Mapping is preserved by using the same indices.
 
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.3)  # Use 30% of data for testing.
+    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.25)  # Use 25% of data for testing.
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=.2)  # 20% of remaining to validate
 
     # Prepare embedding matrix
     word_index = tokenizer.word_index
@@ -61,7 +63,7 @@ def load_data(datapath, glovepath, sample_size=25000):
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
                 embedding_matrix[i] = embedding_vector
-    return x_train, x_test, y_train, y_test, embedding_matrix
+    return x_train, x_test, x_val, y_train, y_test, y_val, embedding_matrix
 
 
 def build_model(embeddings):
@@ -71,7 +73,8 @@ def build_model(embeddings):
     # Long Short Term Memory layer - explained in README.md
     model.add(LSTM(300, return_sequences=True))
     model.add(LSTM(300, return_sequences=True))
-    model.add(Dropout(0.2))  # Dropout can help improve training on a model and reduce overfitting
+    model.add(LSTM(300, return_sequences=True))
+    model.add(Dropout(0.1))  # Dropout can help improve training on a model and reduce overfitting
     model.add(LSTM(300, return_sequences=False))
     model.add(Dense(5, input_dim=300, activation='softmax'))  # Output our predicted score.
     print(model.summary())
@@ -101,7 +104,7 @@ if __name__ == "__main__":
     sample_size = 25000
     if len(sys.argv) == 2:
         sample_size = int(sys.argv[1])
-    X_train, X_test, y_train, y_test, embeddings = load_data("aggressive_dedup.json", "glove_300d.txt", sample_size)
+    X_train, X_test, X_val, y_train, y_test, y_val, embeddings = load_data("aggressive_dedup.json", "glove_300d.txt", sample_size)
     print()
     print("Building model...")
     model = build_model(embeddings)
@@ -109,5 +112,7 @@ if __name__ == "__main__":
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=Adam(lr=0.005),
                   metrics=['accuracy'])
-    history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_test, y_test))
+    history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_val, y_val))
     plot_history(history)
+    scores = model.evaluate(X_test, y_test)
+    print(scores[0])
