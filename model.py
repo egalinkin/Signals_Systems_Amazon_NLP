@@ -21,7 +21,7 @@ def load_data(datapath, glovepath, sample_size=25000):
     texts = list()
     with open(datapath, "r") as f:
         if sample_size > 0:  # For development, we use a reduced sample of 25000 to make sure the code works.
-            for i in range(sample_size):
+            for i in tqdm(range(sample_size)):
                 line = json.loads(f.readline())
                 labels.append(int(line["overall"]) - 1)  # Want to convert values to int, since we're categorizing.
                 texts.append(line["reviewText"])
@@ -33,7 +33,7 @@ def load_data(datapath, glovepath, sample_size=25000):
 
     embeddings_index = dict()
     with open(glovepath, "r") as f:
-        for line in f.readlines():
+        for line in tqdm(f.readlines()):
             values = line.split()
             word = values[0]
             coefs = np.asarray(values[1:], dtype='float32')
