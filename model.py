@@ -10,7 +10,7 @@ from tensorflow.keras.layers import Embedding, Dense, LSTM, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, 
+from sklearn.metrics import mean_squared_error, roc_curve, auc 
 from tensorflow.keras.optimizers import Adam
 import matplotlib.pyplot as plt
 from tqdm import tqdm
@@ -140,5 +140,5 @@ if __name__ == "__main__":
     plt.ylabel('True Positive Rate')
     plt.xlabel('False Positive Rate')
     plt.savefig('AUC.png')
-    print("Mean squared error: {}".format(mse)))
+    print("Mean squared error: {}".format(mse))
     plot_history(history)
