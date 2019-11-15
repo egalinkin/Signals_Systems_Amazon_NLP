@@ -4,14 +4,23 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import sys
 import numpy as np
 import json
+import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.layers import Embedding, Dense, LSTM, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
+from sklearn.metrics import mean_squared_error, 
 from tensorflow.keras.optimizers import Adam
 import matplotlib.pyplot as plt
 from tqdm import tqdm
+
+
+# GPU stuff
+physical_devices = tf.config.experimental.list_physical_devices('GPU')
+if len(physical_devices) > 0:
+    for device in physical_devices:
+        tf.config.experimental.set_memory_growth(device, True)
 
 
 # With credit to keras.io team for the tokenization parts of this code.
@@ -77,7 +86,8 @@ def build_model(embeddings):
     model.add(LSTM(300, return_sequences=True))
     model.add(LSTM(300, return_sequences=True))
     model.add(LSTM(300, return_sequences=True))
-    model.add(Dropout(0.1))  # Dropout can help improve training on a model and reduce overfitting
+    model.add(LSTM(300, return_sequences=True))
+    model.add(Dropout(0.2))  # Dropout can help improve training on a model and reduce overfitting
     model.add(LSTM(300, return_sequences=False))
     model.add(Dense(5, input_dim=300, activation='softmax'))  # Output our predicted score.
     print(model.summary())
@@ -85,8 +95,8 @@ def build_model(embeddings):
 
 
 def plot_history(history):
-    accuracy = history.history['acc']
-    validation_accuracy = history.history['val_acc']
+    accuracy = history.history['accuracy']
+    validation_accuracy = history.history['val_accuracy']
     loss = history.history['loss']
     validation_loss = history.history['val_loss']
     epochs = range(1, len(accuracy) + 1)
@@ -100,7 +110,7 @@ def plot_history(history):
     plt.title("Training and validation loss")
     plt.legend()
 
-    plt.show()
+    plt.savefig("accuracy_loss.png")
 
 
 if __name__ == "__main__":
@@ -113,9 +123,22 @@ if __name__ == "__main__":
     model = build_model(embeddings)
     print("Running!")
     model.compile(loss='sparse_categorical_crossentropy',
-                  optimizer=Adam(lr=0.005),
+                  optimizer=Adam(),
                   metrics=['accuracy'])
     history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_val, y_val))
+    preds = model.predict(X_test)
+    preds = [int(x) for x in preds]
+    mse = mean_squared_error(preds, y_test)
+    precision, recall, _ = roc_curve(y_test, preds)
+    auc_score = auc(precision, recall)
+    plt.figure(figsize=(10, 10))
+    plt.title('Receiver Operating Characteristic')
+    plt.plot(precision, recall, color='red', label='AUC = %.2f' %auc_score)
+    plt.legend(loc='lower right')
+    plt.plot([0, 1], [0, 1], color='black', linestyle='--')
+    plt.axis('tight')
+    plt.ylabel('True Positive Rate')
+    plt.xlabel('False Positive Rate')
+    plt.savefig('AUC.png')
+    print("Mean squared error: {}".format(mse)))
     plot_history(history)
-    scores = model.evaluate(X_test, y_test)
-    print(scores[0])
