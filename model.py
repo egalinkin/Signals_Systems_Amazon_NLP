@@ -64,8 +64,8 @@ def load_data(datapath, glovepath, sample_size=25000):
     data = data[indices]
     labels = labels[indices]  # Mapping is preserved by using the same indices.
 
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.25)  # Use 25% of data for testing.
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=.2)  # 20% of remaining to validate
+    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.25, stratify=True)  # Use 25% of data for testing.
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=.2, stratify=True)  # 20% of remaining to validate
 
     # Prepare embedding matrix
     word_index = tokenizer.word_index
@@ -83,8 +83,6 @@ def build_model(embeddings):
     # 10000 word vocabulary, 300-dimensional embedding, 200 words.
     model.add(Embedding(10000, 300, weights=[embeddings], input_length=300))
     # Long Short Term Memory layer - explained in README.md
-    model.add(LSTM(300, return_sequences=True))
-    model.add(LSTM(300, return_sequences=True))
     model.add(LSTM(300, return_sequences=True))
     model.add(LSTM(300, return_sequences=True))
     model.add(Dropout(0.2))  # Dropout can help improve training on a model and reduce overfitting
@@ -123,9 +121,11 @@ if __name__ == "__main__":
     model = build_model(embeddings)
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=Adam(),
-                  metrics=['accuracy'])
+                  metrics=['accuracy'],
+                  callbacks=[earlystopping]
+                  )
     print("Running!")
-    history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_val, y_val))
+    history = model.fit(X_train, y_train, batch_size=512, epochs=15, validation_data=(X_val, y_val))
     preds = model.predict(X_test)
     preds = [int(x) for x in preds]
     mse = mean_squared_error(preds, y_test)
