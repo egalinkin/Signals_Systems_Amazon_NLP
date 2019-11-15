@@ -50,7 +50,7 @@ def load_data(datapath, glovepath, sample_size=25000):
             word = values[0]
             coefs = np.asarray(values[1:], dtype='float32')
             embeddings_index[word] = coefs
-    print("Data loaded!")
+    print("Data loaded! Training embeddings, this may take a while...")
 
     tokenizer = Tokenizer(num_words=vocab_size)
     tokenizer.fit_on_texts(texts)
@@ -118,13 +118,13 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         sample_size = int(sys.argv[1])
     X_train, X_test, X_val, y_train, y_test, y_val, embeddings = load_data("aggressive_dedup.json", "glove_300d.txt", sample_size)
-    print()
+    earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0.0001, patience=2)
     print("Building model...")
     model = build_model(embeddings)
-    print("Running!")
     model.compile(loss='sparse_categorical_crossentropy',
                   optimizer=Adam(),
                   metrics=['accuracy'])
+    print("Running!")
     history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_val, y_val))
     preds = model.predict(X_test)
     preds = [int(x) for x in preds]
