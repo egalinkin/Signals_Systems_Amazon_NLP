@@ -4,15 +4,17 @@ os.environ['CUDA_VISIBLE_DEVICES'] = '0'
 import sys
 import numpy as np
 import json
+import pandas as pd
 import tensorflow as tf
 from tensorflow.keras.preprocessing.text import Tokenizer
 from tensorflow.keras.layers import Embedding, Dense, LSTM, Dropout
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.preprocessing.sequence import pad_sequences
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import mean_squared_error, roc_curve, auc 
+from sklearn.metrics import confusion_matrix
 from tensorflow.keras.optimizers import Adam
 import matplotlib.pyplot as plt
+import seaborn as sns
 from tqdm import tqdm
 
 
@@ -64,13 +66,13 @@ def load_data(datapath, glovepath, sample_size=25000):
     data = data[indices]
     labels = labels[indices]  # Mapping is preserved by using the same indices.
 
-    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.25, stratify=True)  # Use 25% of data for testing.
-    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=.2, stratify=True)  # 20% of remaining to validate
+    x_train, x_test, y_train, y_test = train_test_split(data, labels, test_size=.25, stratify=labels)  # Use 25% of data for testing.
+    x_train, x_val, y_train, y_val = train_test_split(x_train, y_train, test_size=.2, stratify=y_train)  # 20% of remaining to validate
 
     # Prepare embedding matrix
     word_index = tokenizer.word_index
     embedding_matrix = np.zeros((vocab_size, 300))  # Our embedding vectors are 300-dimensional.
-    for word, i in word_index.items():
+    for word, i in tqdm(word_index.items()):
         if i < vocab_size:
             embedding_vector = embeddings_index.get(word)
             if embedding_vector is not None:
@@ -116,7 +118,7 @@ if __name__ == "__main__":
     if len(sys.argv) == 2:
         sample_size = int(sys.argv[1])
     X_train, X_test, X_val, y_train, y_test, y_val, embeddings = load_data("aggressive_dedup.json", "glove_300d.txt", sample_size)
-    earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0.0001, patience=2)
+    earlystopping = tf.keras.callbacks.EarlyStopping(monitor='val_accuracy', min_delta=0.001, patience=1)
     print("Building model...")
     model = build_model(embeddings)
     model.compile(loss='sparse_categorical_crossentropy',
@@ -125,20 +127,17 @@ if __name__ == "__main__":
                   callbacks=[earlystopping]
                   )
     print("Running!")
-    history = model.fit(X_train, y_train, batch_size=512, epochs=15, validation_data=(X_val, y_val))
+    history = model.fit(X_train, y_train, batch_size=256, epochs=15, validation_data=(X_val, y_val))
     preds = model.predict(X_test)
-    preds = [int(x) for x in preds]
-    mse = mean_squared_error(preds, y_test)
-    precision, recall, _ = roc_curve(y_test, preds)
-    auc_score = auc(precision, recall)
-    plt.figure(figsize=(10, 10))
-    plt.title('Receiver Operating Characteristic')
-    plt.plot(precision, recall, color='red', label='AUC = %.2f' %auc_score)
-    plt.legend(loc='lower right')
-    plt.plot([0, 1], [0, 1], color='black', linestyle='--')
-    plt.axis('tight')
-    plt.ylabel('True Positive Rate')
-    plt.xlabel('False Positive Rate')
-    plt.savefig('AUC.png')
-    print("Mean squared error: {}".format(mse))
+    preds = [np.argmax(x) for x in preds]
+    accuracy = np.average([1 if p == l else 0 for p, l in zip(preds, y_test)])
+    cm = confusion_matrix(preds, y_test)
+    precision = np.diag(cm) / np.sum(cm, axis = 0)
+    recall = np.diag(cm) / np.sum(cm, axis = 1)
+    print("Test Accuracy: {}".format(accuracy))
+    print("Precision: {0:.4f}\tRecall: {0:.4f}".format(np.mean(precision), np.mean(recall)))
+    df_cm = pd.DataFrame(cm, range(5), range(5))
+    sns.set(font_scale=1.4)
+    sns.heatmap(df_cm, annot=True, annot_kws={"size":16})
+    plt.savefig("confusion_matrix.png")
     plot_history(history)
